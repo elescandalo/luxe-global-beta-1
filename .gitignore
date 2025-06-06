@@ -1,53 +1,111 @@
-# See https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
+# .gitignore Otimizado para Luxe Global (Projeto Nx)
 
-# compiled output
+# === Dependências ===
+node_modules
+npm-debug.log*
+yarn-error.log
+yarn-debug.log*
+pnpm-debug.log*
+
+# === Saídas de Build e Compilação ===
 dist
 tmp
 out-tsc
+build
+.next/
+out/
+.vercel/ # Para builds locais do Vercel CLI
 
-# dependencies
-node_modules
+# === Cache e Dados do Nx ===
+.nx/cache/
+.nx/workspace-data/
+.nx/workflows/
+nx.log
+.nx/*.log
 
-# IDEs and editors
-/.idea
-.project
-.classpath
-.c9/
-*.launch
-.settings/
-*.sublime-workspace
+# === Arquivos de Log ===
+*.log
+logs
+*.log.*
 
-# IDE - VSCode
+# === Testes e Cobertura ===
+coverage/
+test-output/
+junit.xml
+.nyc_output
+
+# === Arquivos de Ambiente (IMPORTANTÍSSIMO PARA SEGURANÇA) ===
+# Ignora todos os arquivos .env e suas variações (ex: .env.local, .env.development)
+.env
+.env.*
+# EXCETO o arquivo de exemplo, que DEVE ser commitado
+!/.env.example 
+
+# === Arquivos de Sistema Operacional ===
+.DS_Store
+Thumbs.db
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+
+# === Arquivos de IDEs e Editores ===
+# IntelliJ
+/.idea/
+*.iml
+*.iws
+
+# VSCode
 .vscode/*
 !.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
+.history
 
-# misc
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Outros
+.project
+.classpath
+.c9/
+*.launch
+.settings/
 /.sass-cache
 /connect.lock
-/coverage
 /libpeerconnection.log
-npm-debug.log
-yarn-error.log
-testem.log
-/typings
+/typings # Geralmente obsoleto com TypeScript moderno
 
-# System Files
-.DS_Store
-Thumbs.db
+# === Arquivos Específicos do Cypress (se não estiverem dentro de uma pasta já ignorada) ===
+# cypress/videos/
+# cypress/screenshots/
+# cypress.env.json (se usado para segredos locais do Cypress)
 
+# === Documentação Gerada (se houver) ===
+# /docs_generated
+# /storybook-static
+
+# === Arquivos específicos do projeto que não devem ser versionados ===
+# .cursor/rules/nx-rules.mdc # Se este é específico da sua máquina/setup, pode ignorar
+# .github/instructions/nx.instructions.md # Se este é específico da sua máquina/setup
+
+# === Uploads locais (se STORAGE_TYPE=LOCAL em dev) ===
+# Se você definiu LOCAL_STORAGE_PATH como algo na raiz, ex: /uploads_dev
+# /uploads_dev/
+
+# === Certificados locais (se usados para dev HTTPS ou chaves Apple .p8) ===
+# /certs/ # Se você armazena chaves .p8 de dev aqui, NUNCA commite chaves de produção.
+
+# Manter o que já estava e fazia sentido:
 .nx/cache
 .nx/workspace-data
-.cursor/rules/nx-rules.mdc
-.github/instructions/nx.instructions.md
+# .cursor/rules/nx-rules.mdc # Se realmente não deve ser versionado
+# .github/instructions/nx.instructions.md # Se realmente não deve ser versionado
 
+# Next.js (já coberto por .next/ e out/)
+# .next
+# out
+
+# test-output (já coberto acima)
 test-output
-
-vite.config.*.timestamp*
-vitest.config.*.timestamp*
-
-# Next.js
-.next
-out

@@ -1,0 +1,191 @@
+# docker-compose.yml
+# Define os serviços, redes e volumes para o ambiente de desenvolvimento local do Luxe Global.
+# Este arquivo utiliza variáveis de ambiente definidas no arquivo .env na raiz do projeto
+# para configurar portas, usuários, senhas, etc.
+
+version: '3.8' # Especifica a versão do formato do arquivo Docker Compose.
+
+services:
+  # --------------------------------------------------------------------------
+  # Serviço da API Principal (NestJS) - Exemplo para o contexto do Chile (CL)
+  # --------------------------------------------------------------------------
+  # Este serviço builda e roda a aplicação backend 'api-principal'.
+  # Em um cenário de desenvolvimento local focado, geralmente uma instância é suficiente.
+  # Está configurado para usar os serviços de banco de dados, cache e mensageria locais definidos abaixo.
+  api_principal_cl:
+    build:
+      context: . # O contexto do build é a raiz do monorepo.
+      dockerfile: apps/api-principal/Dockerfile # Caminho para o Dockerfile da API. (Ainda a ser criado)
+    container_name: luxe_global_api_cl # Nome amigável para o container.
+    # Comando para iniciar a API em modo de desenvolvimento com hot-reloading.
+    # A porta interna do container é definida por API_PORT_CL_DOCKER (ou 3001 como padrão).
+    command: pnpm exec nx serve api-principal --host=0.0.0.0 --port=${API_PORT_CL_DOCKER:-3001}
+    ports:
+      # Mapeia a porta interna do container para uma porta no host.
+      # A porta do host é configurável via .env (API_PORT_CL_DOCKER_HOST) ou usa 3001 como padrão.
+      - '${API_PORT_CL_DOCKER_HOST:-3001}:${API_PORT_CL_DOCKER:-3001}'
+    environment:
+      # Variáveis de ambiente injetadas no container da API.
+      - NODE_ENV=development
+      - TZ=UTC # Fuso horário do container.
+      - PORT=${API_PORT_CL_DOCKER:-3001} # Porta que a aplicação NestJS escutará DENTRO do container.
+      - PAIS_CONTEXTO=CL # Contexto do país para esta instância da API.
+      - ID_AGENCIA_LOCAL=LUXE-CL # ID da agência para esta instância.
+      # URL de conexão para o banco de dados PostgreSQL LOCAL 'db_cl' (serviço definido abaixo).
+      - DATABASE_URL=postgres://${POSTGRES_USER_CL}:${POSTGRES_PASSWORD_CL}@db_cl:5432/${POSTGRES_DB_CL}
+      # URL de conexão para o serviço de cache Redis LOCAL 'cache_cl'.
+      - REDIS_URL=redis://cache_cl:6379
+      # URL de conexão para o serviço RabbitMQ LOCAL 'rabbitmq_server'.
+      - RABBITMQ_URL=amqp://${RABBITMQ_DEFAULT_USER_DOCKER}:${RABBITMQ_DEFAULT_PASS_DOCKER}@rabbitmq_server:5672
+      # Segredos JWT para desenvolvimento (devem ser diferentes em produção).
+      - JWT_ACCESS_TOKEN_SECRET=${JWT_ACCESS_TOKEN_SECRET:-DEV_ACCESS_SUPER_SECRET_STRING_MIN_32_CHARS_RANDOM}
+      - JWT_ACCESS_TOKEN_EXPIRATION=${JWT_ACCESS_TOKEN_EXPIRATION:-1h}
+      - JWT_REFRESH_TOKEN_SECRET=${JWT_REFRESH_TOKEN_SECRET:-DEV_REFRESH_SUPER_SECRET_STRING_MIN_32_CHARS_RANDOM}
+      - JWT_REFRESH_TOKEN_EXPIRATION=${JWT_REFRESH_TOKEN_EXPIRATION:-7d}
+      # Adicione outras variáveis de ambiente globais da aplicação (SENDGRID_API_KEY, etc.) do .env raiz.
+      - SENDGRID_API_KEY=${SENDGRID_API_KEY}
+      - GOOGLE_OAUTH_CLIENT_ID=${GOOGLE_OAUTH_CLIENT_ID}
+      # ... (todas as outras variáveis globais que a API precisa do .env raiz)
+    volumes:
+      # Monta o código fonte da raiz do projeto para /app dentro do container, permitindo hot-reloading.
+      - .:/app
+      # Volume anônimo para node_modules para evitar que o node_modules do host sobrescreva o do container.
+      - /app/node_modules
+      # Volume anônimo para dist para evitar que o dist do host sobrescreva o do container se o build for feito no host.
+      - /app/dist
+    depends_on:
+      # Garante que estes serviços sejam iniciados antes da API.
+      - db_cl
+      - cache_cl
+      - rabbitmq_server
+    networks:
+      # Conecta o container à rede definida.
+      - luxe_global_network
+    restart: unless-stopped # Reinicia o container a menos que seja parado manualmente.
+
+  # --------------------------------------------------------------------------
+  # Serviços de Banco de Dados PostgreSQL Locais (um por país)
+  # --------------------------------------------------------------------------
+  db_cl:
+    image: postgres:15-alpine # Imagem Docker do PostgreSQL.
+    container_name: luxe_global_db_cl_local # Nome do container.
+    environment:
+      # Credenciais e nome do banco de dados para o PostgreSQL do Chile, configurados via .env.
+      POSTGRES_USER: ${POSTGRES_USER_CL}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD_CL}
+      POSTGRES_DB: ${POSTGRES_DB_CL}
+    ports:
+      # Mapeia a porta interna 5432 do PostgreSQL para uma porta no host (configurável via .env).
+      - '${POSTGRES_PORT_CL_HOST:-5432}:5432'
+    volumes:
+      # Volume nomeado para persistir os dados do banco de dados do Chile.
+      - postgres_data_cl_local:/var/lib/postgresql/data
+    networks:
+      - luxe_global_network
+    restart: unless-stopped
+
+  db_ar:
+    image: postgres:15-alpine
+    container_name: luxe_global_db_ar_local
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER_AR}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD_AR}
+      POSTGRES_DB: ${POSTGRES_DB_AR}
+    ports:
+      - '${POSTGRES_PORT_AR_HOST:-5433}:5432'
+    volumes:
+      - postgres_data_ar_local:/var/lib/postgresql/data
+    networks:
+      - luxe_global_network
+    restart: unless-stopped
+
+  db_es:
+    image: postgres:15-alpine
+    container_name: luxe_global_db_es_local
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER_ES}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD_ES}
+      POSTGRES_DB: ${POSTGRES_DB_ES}
+    ports:
+      - '${POSTGRES_PORT_ES_HOST:-5434}:5432'
+    volumes:
+      - postgres_data_es_local:/var/lib/postgresql/data
+    networks:
+      - luxe_global_network
+    restart: unless-stopped
+
+  # --------------------------------------------------------------------------
+  # Serviços de Cache Redis Locais (um por país)
+  # --------------------------------------------------------------------------
+  cache_cl:
+    image: redis:7-alpine # Imagem Docker do Redis.
+    container_name: luxe_global_cache_cl_local # Nome do container.
+    ports:
+      # Mapeia a porta interna 6379 do Redis para uma porta no host (configurável via .env).
+      - '${REDIS_PORT_CL_HOST:-6379}:6379'
+    networks:
+      - luxe_global_network
+    restart: unless-stopped
+    # Para persistência de dados do Redis (opcional para cache, mas útil se usado para filas BullMQ, etc.):
+    # command: redis-server --appendonly yes # ou outra estratégia de persistência
+    # volumes:
+    #   - redis_data_cl_local:/data
+
+  cache_ar:
+    image: redis:7-alpine
+    container_name: luxe_global_cache_ar_local
+    ports:
+      - '${REDIS_PORT_AR_HOST:-6380}:6379'
+    networks:
+      - luxe_global_network
+    restart: unless-stopped
+
+  cache_es:
+    image: redis:7-alpine
+    container_name: luxe_global_cache_es_local
+    ports:
+      - '${REDIS_PORT_ES_HOST:-6381}:6379'
+    networks:
+      - luxe_global_network
+    restart: unless-stopped
+
+  # --------------------------------------------------------------------------
+  # Serviço de Mensageria RabbitMQ (Centralizado Localmente)
+  # --------------------------------------------------------------------------
+  rabbitmq_server:
+    image: rabbitmq:3.13-management-alpine # Imagem com a UI de gerenciamento.
+    container_name: luxe_global_rabbitmq_local # Nome do container.
+    environment:
+      # Credenciais para o RabbitMQ, configuradas via .env (usando as vars _DOCKER para o setup interno).
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER_DOCKER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS_DOCKER}
+    ports:
+      # Mapeia a porta AMQP (5672) e a porta da UI de gerenciamento (15672) para o host.
+      - '${RABBITMQ_PORT_HOST:-5672}:5672'
+      - '${RABBITMQ_MANAGEMENT_PORT_HOST:-15672}:15672'
+    volumes:
+      # Volume nomeado para persistir os dados do RabbitMQ.
+      - rabbitmq_data_local:/var/lib/rabbitmq/
+    networks:
+      - luxe_global_network
+    restart: unless-stopped
+
+# --------------------------------------------------------------------------
+# Definição dos Volumes Nomeados
+# --------------------------------------------------------------------------
+# Volumes nomeados são gerenciados pelo Docker e persistem os dados mesmo se os containers forem removidos.
+volumes:
+  postgres_data_cl_local:
+  postgres_data_ar_local:
+  postgres_data_es_local:
+  rabbitmq_data_local:
+  # redis_data_cl_local: # Descomente se ativar persistência para o Redis
+
+# --------------------------------------------------------------------------
+# Definição da Rede Customizada
+# --------------------------------------------------------------------------
+# Cria uma rede bridge customizada para que os containers possam se comunicar
+# entre si usando os nomes dos serviços como hostnames.
+networks:
+  luxe_global_network:
+    driver: bridge
