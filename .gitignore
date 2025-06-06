@@ -109,3 +109,7 @@ ehthumbs_vista.db
 
 # test-output (já coberto acima)
 test-output
+
+# Next.js
+.next
+out

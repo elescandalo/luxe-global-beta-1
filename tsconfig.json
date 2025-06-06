@@ -11,6 +11,9 @@
     },
     {
       "path": "./apps/cl-main"
+    },
+    {
+      "path": "./apps/cl-main-e2e"
     }
   ]
 }
