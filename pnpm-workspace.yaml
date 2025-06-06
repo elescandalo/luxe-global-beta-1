@@ -1,2 +1,15 @@
-packages: 
-  - "packages/*"
+packages:
+  - 'packages/*'
+  - 'libs/shared/*'
+  - 'apps/*'
+onlyBuiltDependencies:
+  - '@nestjs/core'
+  - '@parcel/watcher'
+  - 'argon2'
+  - 'bcrypt'
+  - 'core-js'
+  - 'cypress'
+  - 'esbuild'
+  - 'msgpackr-extract'
+  - 'sharp'
+  - 'unrs-resolver'

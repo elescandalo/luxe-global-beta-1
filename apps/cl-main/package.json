@@ -1,0 +1,17 @@
+{
+  "name": "@luxe-global/cl-main",
+  "version": "0.0.1",
+  "private": true,
+  "nx": {
+    "tags": [
+      "scope:agency-main",
+      "type:app",
+      "platform:web"
+    ]
+  },
+  "dependencies": {
+    "next": "~15.2.4",
+    "react": "19.0.0",
+    "react-dom": "19.0.0"
+  }
+}
